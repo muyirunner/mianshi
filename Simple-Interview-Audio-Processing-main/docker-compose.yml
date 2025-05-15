@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  app:
+    image: ghcr.io/aowerdmax/websocket-redis/websocket_redis:latest
+    ports:
+      - "${GO_APP_PORT}:${GO_APP_PORT}"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+    depends_on:
+      - meilisearch
+      - redis
+    env_file:
+      - .env
+    environment:
+      MEILISEARCH_HOST: "meilisearch"
+      MEILISEARCH_PORT: 7700
+      REDIS_HOST: "redis"
+      REDIS_PORT: 6379
+    restart: on-failure
+    networks:
+      - app_network
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    ports:
+      - "${MEILISEARCH_PORT}:7700"
+    environment:
+      MEILI_ENV: "development"
+    networks:
+      - app_network
+
+  funasr_interview:
+    image: registry.cn-hangzhou.aliyuncs.com/funasr_repo/funasr:funasr-runtime-sdk-online-cpu-0.1.10
+    container_name: funasr_interview
+    ports:
+      - "${INTERVIEWER_PORT}:10095"
+    volumes:
+      - ./funasr-runtime-resources/models_interview:/workspace/models
+    privileged: true
+    stdin_open: true
+    tty: true
+    networks:
+      - app_network
+
+  funasr_rookie:
+    image: registry.cn-hangzhou.aliyuncs.com/funasr_repo/funasr:funasr-runtime-sdk-online-cpu-0.1.10
+    container_name: funasr_rookie
+    ports:
+      - "${ROOKIE_PORT}:10095"
+    volumes:
+      - ./funasr-runtime-resources/models_rookie:/workspace/models
+    privileged: true
+    stdin_open: true
+    tty: true
+    networks:
+      - app_network
+
+  redis:
+    image: redis:latest
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - app_network
+    command: ["redis-server", "--appendonly", "yes"]
+
+networks:
+  app_network:
